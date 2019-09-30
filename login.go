@@ -14,10 +14,17 @@ func main() {
 	lambda.Start(checkLoginUnico)
 }
 
-func checkLoginUnico(ctx context.Context, req events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
+//MyRequest é uma struct de unmarshall o json de entrada
+type MyRequest struct {
+	Token string `json:"token"`
+}
+
+func checkLoginUnico(ctx context.Context, req MyRequest) (events.APIGatewayProxyResponse, error) {
 	var loginUnicoURL string = os.Getenv("LoginUnicoURL")
 
 	client := &http.Client{}
+
+	tok := req.Token
 
 	response, err := client.Get(loginUnicoURL)
 	if err != nil {
@@ -30,8 +37,9 @@ func checkLoginUnico(ctx context.Context, req events.APIGatewayWebsocketProxyReq
 		log.Println("Erro http.NewRequest: " + err.Error())
 		return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: http.StatusInternalServerError}, err
 		}
-	log.Println("headers: " + req.Headers["Authorization"])
-	request.Header.Add("Authorization", req.Headers["Authorization"])
+	
+	var bearer string = "Bearer " + tok
+	request.Header.Add("Authorization", bearer)
 
 	response, err = client.Do(request)
 	if err != nil {
@@ -42,6 +50,6 @@ func checkLoginUnico(ctx context.Context, req events.APIGatewayWebsocketProxyReq
 	if response.StatusCode == http.StatusOK {
 		return events.APIGatewayProxyResponse{Body: "ok", StatusCode: http.StatusOK}, nil
 	} 
-	log.Println("loginUnico falhou com a Authorization: " + req.Headers["Authorization"])
+	log.Println("loginUnico falhou com a Authorization: " + tok)
 	return events.APIGatewayProxyResponse{Body: "unauthorized", StatusCode: http.StatusUnauthorized}, nil
 }
